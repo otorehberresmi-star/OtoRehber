@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "OtoRehber",
-    "slug": "OtoRehber",
+    "slug": "otorehber",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -14,9 +14,17 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.otorehber.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "OtoRehber, araç fotoğraflarını ve deneyim görsellerini paylaşabilmeniz için kameraya erişir.",
+        "NSPhotoLibraryUsageDescription": "OtoRehber, profil, garaj ve deneyim paylaşımlarınıza fotoğraf ekleyebilmeniz için fotoğraf arşivinize erişir.",
+        "NSPhotoLibraryAddUsageDescription": "OtoRehber, seçtiğiniz araç görsellerini paylaşımınıza eklemek için fotoğraf arşivinizi kullanır."
+      }
     },
     "android": {
+      "package": "com.otorehber.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -30,10 +38,52 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "OtoRehber, araç fotoğraflarını ve deneyim görsellerini paylaşabilmeniz için kameraya erişir.",
+          "photosPermission": "OtoRehber, profil, garaj ve deneyim paylaşımlarınıza fotoğraf ekleyebilmeniz için fotoğraf arşivinize erişir.",
+          "microphonePermission": false,
+          "colors": {
+            "cropToolbarColor": "#ffffff",
+            "cropToolbarIconColor": "#111827",
+            "cropToolbarActionTextColor": "#f97316",
+            "cropBackButtonIconColor": "#111827",
+            "cropBackgroundColor": "#ffffff"
+          },
+          "dark": {
+            "colors": {
+              "cropToolbarColor": "#0f172a",
+              "cropToolbarIconColor": "#ffffff",
+              "cropToolbarActionTextColor": "#fb923c",
+              "cropBackButtonIconColor": "#ffffff",
+              "cropBackgroundColor": "#020617"
+            }
+          }
+        }
+      ],
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "OtoRehber uygulamasını güvenli şekilde açmak için Face ID kullanılır."
+        }
+      ],
+      "@sentry/react-native/expo",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "80403cb1-62b0-4ece-992f-9c69fe74b3f6"
+      }
+    },
+    "owner": "serpiltest"
   }
 }

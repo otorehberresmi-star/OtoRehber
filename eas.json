@@ -1,0 +1,34 @@
+{
+  "cli": {
+    "version": ">= 20.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nmixkbylzczztbylzyde.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_pT5D3J7r1wn_2dia6zoykA_4h9-Zl3B",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "80403cb1-62b0-4ece-992f-9c69fe74b3f6"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nmixkbylzczztbylzyde.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_pT5D3J7r1wn_2dia6zoykA_4h9-Zl3B",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "80403cb1-62b0-4ece-992f-9c69fe74b3f6"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nmixkbylzczztbylzyde.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_pT5D3J7r1wn_2dia6zoykA_4h9-Zl3B",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "80403cb1-62b0-4ece-992f-9c69fe74b3f6"
+      }
+    }
+  }
+}

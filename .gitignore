@@ -30,8 +30,16 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# local agent/build artifacts
+.codex/
+*.zip
+
 # local env files
+.env
 .env*.local
+
+# Supabase local CLI state
+supabase/.temp/
 
 # typescript
 *.tsbuildinfo
