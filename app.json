@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "OtoRehber",
-    "slug": "otorehber",
+    "slug": "OtoRehber",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,13 +9,14 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "image": "./assets/images/splash-full.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#000512"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.otorehber.app",
+      "buildNumber": "5",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "OtoRehber, araç fotoğraflarını ve deneyim görsellerini paylaşabilmeniz için kameraya erişir.",
@@ -25,6 +26,12 @@
     },
     "android": {
       "package": "com.otorehber.app",
+      "softwareKeyboardLayoutMode": "resize",
+      "splash": {
+        "image": "./assets/images/splash-full.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#000512"
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -73,7 +80,27 @@
         }
       ],
       "@sentry/react-native/expo",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-full.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#000512",
+          "enableFullScreenImage_legacy": true,
+          "ios": {
+            "image": "./assets/images/splash-full.png",
+            "resizeMode": "cover",
+            "backgroundColor": "#000512",
+            "enableFullScreenImage_legacy": true
+          },
+          "android": {
+            "image": "./assets/images/splash-full.png",
+            "resizeMode": "cover",
+            "backgroundColor": "#000512"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
