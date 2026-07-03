@@ -796,6 +796,8 @@ export default function ReviewDetailScreen() {
     );
   }
 
+  const composerScrollPadding = Math.max(insets.bottom, 12) + 148;
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: palette.background }]}
@@ -831,7 +833,10 @@ export default function ReviewDetailScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.content}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: composerScrollPadding },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

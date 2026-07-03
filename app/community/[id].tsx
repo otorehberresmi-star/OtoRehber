@@ -78,7 +78,13 @@ export default function CommunityFeedScreen() {
   const { palette } = useAppTheme();
 
   // Expo Router'da parametreler ilk renderda undefined veya dizi gelebilir.
-  const communityId = Array.isArray(id) ? id[0] : id;
+  const rawCommunityId = Array.isArray(id) ? id[0] : id;
+  const communityId =
+    typeof rawCommunityId === "string" &&
+    rawCommunityId.trim() &&
+    rawCommunityId !== "[id]"
+      ? rawCommunityId.trim()
+      : "";
 
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +100,11 @@ export default function CommunityFeedScreen() {
 
   const fetchPosts = useCallback(
     async (showLoader = true) => {
-      if (!communityId) return;
+      if (!communityId || !getCommunityById(communityId)) {
+        setPosts([]);
+        if (showLoader) setLoading(false);
+        return;
+      }
 
       try {
         if (showLoader) setLoading(true);
@@ -177,10 +187,16 @@ export default function CommunityFeedScreen() {
   );
 
   useEffect(() => {
-    if (!communityId) return;
+    if (!communityId || !community) return;
+
+    const channelSuffix = [
+      user?.id || "guest",
+      Date.now(),
+      Math.random().toString(36).slice(2),
+    ].join(":");
 
     const postsChannel = supabase
-      .channel(`community-posts:${communityId}`)
+      .channel(`community-detail:posts:${communityId}:${channelSuffix}`)
       .on(
         "postgres_changes",
         {
@@ -218,7 +234,7 @@ export default function CommunityFeedScreen() {
       .subscribe();
 
     const commentsChannel = supabase
-      .channel(`community-comments:${communityId}`)
+      .channel(`community-detail:comments:${communityId}:${channelSuffix}`)
       .on(
         "postgres_changes",
         {
@@ -263,11 +279,15 @@ export default function CommunityFeedScreen() {
       supabase.removeChannel(postsChannel);
       supabase.removeChannel(commentsChannel);
     };
-  }, [communityId, fetchPosts]);
+  }, [community, communityId, fetchPosts, user?.id]);
 
   useEffect(() => {
     const fetchMembership = async () => {
-      if (!communityId) return;
+      if (!communityId || !community) {
+        setIsMember(false);
+        setMemberCount(0);
+        return;
+      }
 
       const { data: countData, error: countError } = await supabase.rpc(
         "get_community_member_count",
@@ -310,20 +330,31 @@ export default function CommunityFeedScreen() {
     };
 
     fetchMembership();
-  }, [communityId, user?.id]);
+  }, [community, communityId, user?.id]);
 
-  if (!communityId || typeof communityId !== "string") {
+  if (!communityId || !community) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: palette.background,
-        }}
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: palette.background }]}
+        edges={["top"]}
       >
-        <ActivityIndicator size="large" color={Colors.orange} />
-      </View>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.notFoundState}>
+          <FontAwesome6 name="users-slash" size={28} color={Colors.orange} />
+          <Text style={[styles.emptyTitle, { color: palette.text }]}>
+            Topluluk bulunamadı
+          </Text>
+          <Text style={[styles.emptyText, { color: palette.muted }]}>
+            Bu bağlantı geçersiz veya topluluk artık mevcut değil.
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyBtn}
+            onPress={() => router.replace("/communities")}
+          >
+            <Text style={styles.emptyBtnText}>Topluluklara Dön</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -830,6 +861,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   emptyBtnText: { color: Colors.white, fontSize: 13, fontWeight: "800" },
+  notFoundState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    gap: 12,
+  },
   postCard: {
     backgroundColor: Colors.navyCard,
     borderRadius: 16,

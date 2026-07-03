@@ -70,7 +70,11 @@ export default function PostDetailScreen() {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
   };
 
-  const postId = Array.isArray(id) ? id[0] : id;
+  const rawPostId = Array.isArray(id) ? id[0] : id;
+  const postId =
+    typeof rawPostId === "string" && rawPostId.trim() && rawPostId !== "[id]"
+      ? rawPostId.trim()
+      : "";
 
   const [post, setPost] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -85,9 +89,14 @@ export default function PostDetailScreen() {
   const postReturnTo = postId ? `/post/${postId}` : "/";
 
   useEffect(() => {
-    const fetchPostDetails = async () => {
-      if (!postId) return;
+    if (!postId) {
+      setPost(null);
+      setComments([]);
+      setLoading(false);
+      return;
+    }
 
+    const fetchPostDetails = async () => {
       try {
         setLoading(true);
 
@@ -212,9 +221,15 @@ export default function PostDetailScreen() {
 
     fetchPostDetails();
 
+    const channelSuffix = [
+      user?.id || "guest",
+      Date.now(),
+      Math.random().toString(36).slice(2),
+    ].join(":");
+
     // Gönderideki anlık güncellemeleri dinle
     const postSub = supabase
-      .channel(`realtime:post_${postId}`)
+      .channel(`post-detail:post:${postId}:${channelSuffix}`)
       .on(
         "postgres_changes",
         {
@@ -229,7 +244,7 @@ export default function PostDetailScreen() {
 
     // Yorumlardaki anlık güncellemeleri dinle
     const commentsSub = supabase
-      .channel(`realtime:comments_${postId}`)
+      .channel(`post-detail:comments:${postId}:${channelSuffix}`)
       .on(
         "postgres_changes",
         {
