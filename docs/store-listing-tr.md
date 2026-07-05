@@ -37,25 +37,14 @@ Primary: Lifestyle
 Secondary: Utilities
 
 ## Destek URL
-Tercih edilen kalıcı URL:
 https://otorehber.app/destek
-
-Geçici erişilebilir URL:
-https://github.com/otorehberresmi-star/OtoRehber/blob/master/docs/support-tr.md
+https://oto-rehber.com/destek/
 
 ## Gizlilik Politikası URL
-Tercih edilen kalıcı URL:
-https://otorehber.app/gizlilik
-
-Geçici erişilebilir URL:
-https://github.com/otorehberresmi-star/OtoRehber/blob/master/docs/privacy-policy-tr.md
+https://oto-rehber.com/gizlilik/
 
 ## Kullanım Şartları URL
-Tercih edilen kalıcı URL:
-https://otorehber.app/kullanim-sartlari
-
-Geçici erişilebilir URL:
-https://github.com/otorehberresmi-star/OtoRehber/blob/master/docs/terms-of-use-tr.md
+https://oto-rehber.com/kullanim-sartlari/
 
 ## iOS Screenshot Seti
 Hazırlanan klasörler:
@@ -73,4 +62,4 @@ Ekran sırası:
 5. Profil ve rozetler
 
 ## Yayın Öncesi Not
-`otorehber.app` altındaki destek, gizlilik ve kullanım şartları URL'leri App Store incelemesine gönderilmeden önce canlı olmalı. Domain canlı değilse geçici GitHub URL'leri kullanılabilir, ancak markalı domain tercih edilir.
+`oto-rehber.com` altındaki destek, gizlilik ve kullanım şartları URL'leri App Store incelemesine gönderilmeden önce canlı olmalı. Statik site paketi `website/` klasöründe hazırlandı.
