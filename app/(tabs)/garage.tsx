@@ -14,6 +14,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -34,7 +35,11 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { useReviews } from "../../contexts/ReviewContext";
 import { useAppTheme } from "../../contexts/ThemeContext";
-import { validateCleanContent } from "../../utils/contentModeration";
+import {
+  CONTENT_MODERATION_MESSAGE,
+  isBlockedLanguageError,
+  validateCleanContent,
+} from "../../utils/contentModeration";
 import VehicleCatalogPicker from "../../components/VehicleCatalogPicker";
 import { VehicleCatalogSelection } from "../../utils/vehicleCatalog";
 import { loginRoute } from "../../utils/authRedirect";
@@ -414,6 +419,9 @@ function AddCarModal({
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 250);
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 550);
   };
 
   return (
@@ -435,7 +443,8 @@ function AddCarModal({
       <KeyboardAvoidingView
         style={m.keyboardAvoiding}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
+        keyboardVerticalOffset={0}
+        pointerEvents="box-none"
       >
       <View style={[m.sheet, { backgroundColor: palette.background }]}>
         <View style={[m.handle, { backgroundColor: palette.border }]} />
@@ -514,7 +523,10 @@ function AddCarModal({
               { backgroundColor: palette.card, borderColor: palette.border },
             ]}
             activeOpacity={0.8}
-            onPress={() => setCatalogPickerVisible(true)}
+            onPress={() => {
+              Keyboard.dismiss();
+              setCatalogPickerVisible(true);
+            }}
           >
             <View style={m.vehicleSelectorIcon}>
               <FontAwesome6 name="copyright" size={16} color={Colors.orange} />
@@ -1019,10 +1031,16 @@ function AddFuelModal({
       onRequestClose={onClose}
     >
       <Pressable style={m.overlay} onPress={onClose} />
+      <KeyboardAvoidingView
+        style={m.keyboardAvoiding}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+        pointerEvents="box-none"
+      >
       <View
         style={[
           m.sheet,
-          { height: "85%", backgroundColor: palette.background },
+          { maxHeight: "85%", backgroundColor: palette.background },
         ]}
       >
         <View style={[m.handle, { backgroundColor: palette.border }]} />
@@ -1185,6 +1203,7 @@ function AddFuelModal({
           </TouchableOpacity>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -1287,10 +1306,16 @@ function AddServiceModal({
       onRequestClose={onClose}
     >
       <Pressable style={m.overlay} onPress={onClose} />
+      <KeyboardAvoidingView
+        style={m.keyboardAvoiding}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+        pointerEvents="box-none"
+      >
       <View
         style={[
           m.sheet,
-          { height: "92%", backgroundColor: palette.background },
+          { maxHeight: "92%", backgroundColor: palette.background },
         ]}
       >
         <View style={[m.handle, { backgroundColor: palette.border }]} />
@@ -1442,6 +1467,7 @@ function AddServiceModal({
           </TouchableOpacity>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -1670,17 +1696,12 @@ function FilledGarage({
               <Text style={styles.primaryBtnText}>Yakıt Fişi Ekle</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.secondaryBtn,
-                { backgroundColor: palette.elevated, borderColor: palette.border },
-              ]}
+              style={styles.primaryBtn}
               activeOpacity={0.8}
               onPress={onAddService}
             >
               <FontAwesome6 name="wrench" size={11} color={Colors.white} />
-              <Text style={[styles.secondaryBtnText, { color: palette.text }]}>
-                Servis Ekle
-              </Text>
+              <Text style={styles.primaryBtnText}>Servis Ekle</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1716,9 +1737,7 @@ function FilledGarage({
                     <Text
                       style={[
                         styles.timelineDate,
-                        {
-                          color: item.active ? Colors.orange : palette.muted,
-                        },
+                        { color: Colors.orange },
                       ]}
                     >
                       {item.date}
@@ -2162,6 +2181,10 @@ export default function GarageScreen() {
     });
 
     if (profileError) {
+      if (isBlockedLanguageError(profileError)) {
+        Alert.alert("Uygunsuz içerik", CONTENT_MODERATION_MESSAGE);
+        throw profileError;
+      }
       Alert.alert(
         "Hata",
         "Profil kaydı hazırlanamadı: " + profileError.message,
@@ -2207,6 +2230,10 @@ export default function GarageScreen() {
     const { data, error } = await query;
 
     if (error) {
+      if (isBlockedLanguageError(error)) {
+        Alert.alert("Uygunsuz içerik", CONTENT_MODERATION_MESSAGE);
+        throw error;
+      }
       Alert.alert("Hata", "Araç garaja kaydedilemedi: " + error.message);
       throw error;
     }
@@ -2256,7 +2283,11 @@ export default function GarageScreen() {
         .single();
 
       if (reviewError) {
-        console.error("Garaj incelemesi kaydedilemedi:", reviewError.message);
+        if (isBlockedLanguageError(reviewError)) {
+          Alert.alert("Uygunsuz içerik", CONTENT_MODERATION_MESSAGE);
+        } else {
+          console.error("Garaj incelemesi kaydedilemedi:", reviewError.message);
+        }
       } else {
         addReview({
           id: reviewData.id,
@@ -2472,22 +2503,23 @@ export default function GarageScreen() {
 
 // ─── Styles ─────────────────────────────────────────────────────────────
 const m = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
-  keyboardAvoiding: {
+  overlay: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  keyboardAvoiding: {
+    flex: 1,
     justifyContent: "flex-end",
   },
   sheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    width: "100%",
     backgroundColor: Colors.navyMain || "#0B132B",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    height: "92%",
+    maxHeight: "92%",
     borderTopWidth: 1,
     borderTopColor: Colors.navyBorder,
+    overflow: "hidden",
   },
   handle: {
     width: 40,

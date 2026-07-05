@@ -1,4 +1,5 @@
 import {
+  createAuthRedirectUrl,
   getSafeReturnTo,
   loginRoute,
   withSearchParams,
@@ -28,5 +29,19 @@ describe("authentication redirects", () => {
         empty: "",
       }),
     ).toBe("/comparison/test?car1Name=Audi%20A4");
+  });
+
+  it("creates stable app-scheme auth redirect urls", () => {
+    const createURL = jest.fn(
+      (path, options) =>
+        `${options.scheme}:${options.isTripleSlashed ? "///" : "//"}${path}`,
+    );
+
+    expect(createAuthRedirectUrl(createURL, "/reset-password")).toBe(
+      "otorehber://reset-password",
+    );
+    expect(createURL).toHaveBeenCalledWith("reset-password", {
+      scheme: "otorehber",
+    });
   });
 });

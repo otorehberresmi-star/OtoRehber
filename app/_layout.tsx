@@ -1,10 +1,9 @@
-import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { FontAwesome6 } from "@expo/vector-icons";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import { useFonts } from "expo-font";
 import { Stack, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
@@ -25,7 +24,6 @@ import { AppThemeProvider, useAppTheme } from "../contexts/ThemeContext";
 import { supabase } from "../supabaseClient";
 import {
   initErrorReporting,
-  reportError,
   withErrorReporting,
 } from "../utils/errorReporting";
 import { configureProductionConsole } from "../utils/productionConsole";
@@ -46,28 +44,9 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-    ...FontAwesome.font,
-  });
-
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
-    if (error) {
-      reportError(error, { area: "font-loading" });
-      throw error;
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
 
   return <RootLayoutNav />;
 }
@@ -195,7 +174,7 @@ function ProtectedApplication({ navigationTheme }: { navigationTheme: any }) {
   ) {
     return (
       <View style={[styles.lockScreen, { backgroundColor: palette.background }]}>
-        <FontAwesome name="shield" size={38} color="#f97316" />
+        <FontAwesome6 name="shield-halved" size={38} color="#f97316" />
         <Text style={[styles.lockTitle, { color: palette.text }]}>
           İki Adımlı Doğrulama
         </Text>
@@ -243,7 +222,7 @@ function ProtectedApplication({ navigationTheme }: { navigationTheme: any }) {
   if (isBiometricLocked) {
     return (
       <View style={[styles.lockScreen, { backgroundColor: palette.background }]}>
-        <FontAwesome name="lock" size={38} color="#f97316" />
+        <FontAwesome6 name="lock" size={38} color="#f97316" />
         <Text style={[styles.lockTitle, { color: palette.text }]}>
           OtoRehber Kilitli
         </Text>

@@ -6,7 +6,9 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -24,7 +26,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import { uploadPublicFiles } from "../../utils/storageUpload";
 import { useAppTheme } from "../../contexts/ThemeContext";
 import { communities } from "../../utils/communities";
-import { validateCleanContent } from "../../utils/contentModeration";
+import {
+  CONTENT_MODERATION_MESSAGE,
+  isBlockedLanguageError,
+  validateCleanContent,
+} from "../../utils/contentModeration";
 import VehicleCatalogPicker from "../../components/VehicleCatalogPicker";
 import { VehicleCatalogSelection } from "../../utils/vehicleCatalog";
 import { loginRoute, withSearchParams } from "../../utils/authRedirect";
@@ -35,7 +41,7 @@ const TAGS = ["🔧 Kronik Sorun", "💰 Maliyet", "📍 Tavsiye", "📸 İncele
 export default function CreatePostScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user } = useAuth();
+  const { user, isAuthReady, isLoggedIn } = useAuth();
   const { palette } = useAppTheme();
   const mode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const initialModelId = Array.isArray(params.modelId)
@@ -55,6 +61,9 @@ export default function CreatePostScreen() {
     carName: initialCarName,
     communityId: initialCommunityId,
   });
+  const closeFallbackRoute = initialCommunityId
+    ? `/community/${initialCommunityId}`
+    : "/";
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -78,6 +87,34 @@ export default function CreatePostScreen() {
   const [isModelDropdownVisible, setIsModelDropdownVisible] = useState(false);
   const [catalogPickerVisible, setCatalogPickerVisible] = useState(false);
   const [selectedVehicleTrim, setSelectedVehicleTrim] = useState("");
+
+  useEffect(() => {
+    if (!isAuthReady) return;
+    if (!isLoggedIn) {
+      router.replace(loginRoute(createReturnTo) as any);
+    }
+  }, [createReturnTo, isAuthReady, isLoggedIn, router]);
+
+  const closeComposer = () => {
+    Keyboard.dismiss();
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(closeFallbackRoute as any);
+  };
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        closeComposer();
+        return true;
+      },
+    );
+
+    return () => subscription.remove();
+  }, [closeComposer]);
 
   // Markaları Çek
   useEffect(() => {
@@ -353,6 +390,11 @@ export default function CreatePostScreen() {
         error?.message?.includes("topic_tags") &&
         error?.message?.includes("schema cache");
 
+      if (isBlockedLanguageError(error)) {
+        Alert.alert("Uygunsuz içerik", CONTENT_MODERATION_MESSAGE);
+        return;
+      }
+
       Alert.alert(
         isMissingTopicTags ? "Paylaşım şu anda kullanılamıyor" : "Hata",
         isMissingTopicTags
@@ -364,6 +406,20 @@ export default function CreatePostScreen() {
     }
   };
 
+  if (!isAuthReady || !isLoggedIn) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: palette.background }]}
+        edges={["top"]}
+      >
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.authGuardLoader}>
+          <ActivityIndicator size="large" color={Colors.orange} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: palette.background }]}
@@ -373,7 +429,7 @@ export default function CreatePostScreen() {
       {/* ─── Üst Menü ─── */}
       <View style={[styles.header, { borderBottomColor: palette.border }]}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={closeComposer}
           style={styles.headerBtn}
         >
           <FontAwesome6 name="xmark" size={20} color={palette.text} />
@@ -417,7 +473,7 @@ export default function CreatePostScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: palette.background }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
       >
         {/* ─── Kompakt Seçiciler (Native Tags) ─── */}
@@ -522,7 +578,10 @@ export default function CreatePostScreen() {
                 { backgroundColor: palette.card, borderColor: palette.border },
                 submitAttempted && missingBrand && styles.fieldErrorBorder,
               ]}
-              onPress={() => setCatalogPickerVisible(true)}
+              onPress={() => {
+                Keyboard.dismiss();
+                setCatalogPickerVisible(true);
+              }}
             >
               <Text
                 style={
@@ -918,6 +977,11 @@ export default function CreatePostScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.navyMain },
+  authGuardLoader: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

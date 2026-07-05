@@ -28,9 +28,22 @@ describe("OtoRehber smoke checks", () => {
     expect(result.message).toContain("Yorum");
   });
 
+  it("blocks disguised profanity with separators and leetspeak", () => {
+    const result = validateCleanContent([
+      { label: "Profil adı", value: "a.m.q test" },
+      { label: "Yorum", value: "temiz metin" },
+    ]);
+
+    expect(result.ok).toBe(false);
+    expect(result.fieldLabel).toBe("Profil adı");
+  });
+
   it("allows clean automotive content", () => {
     const result = validateCleanContent([
-      { label: "Deneyim", value: "Uzun yolda yakıt tüketimi düşük ve konforlu." },
+      {
+        label: "Deneyim",
+        value: "Ford Focus uzun yolda yakıt tüketimi düşük ve konforlu.",
+      },
     ]);
 
     expect(result.ok).toBe(true);
@@ -56,6 +69,17 @@ describe("OtoRehber smoke checks", () => {
     expect(sql).toContain("create or replace function public.moderate_content_report");
     expect(sql).toContain("create or replace function public.set_user_moderation_status");
     expect(sql).toContain("is_hidden boolean not null default false");
+  });
+
+  it("keeps database profanity triggers on public user-generated text", () => {
+    const sql = readProjectFile("supabase/content_moderation_triggers.sql");
+
+    expect(sql).toContain("create or replace function public.contains_blocked_language");
+    expect(sql).toContain("posts_reject_blocked_language");
+    expect(sql).toContain("reviews_reject_blocked_language");
+    expect(sql).toContain("comments_reject_blocked_language");
+    expect(sql).toContain("profiles_reject_blocked_language");
+    expect(sql).toContain("garage_cars_reject_blocked_language");
   });
 
   it("keeps push cron secret out of checked-in mobile code", () => {
@@ -177,8 +201,20 @@ describe("OtoRehber smoke checks", () => {
 
   it("pins the Hermes-compatible Supabase client", () => {
     const packageJson = JSON.parse(readProjectFile("package.json"));
+    const supabaseClient = readProjectFile("supabaseClient.ts");
+    const authContext = readProjectFile("contexts/AuthContext.tsx");
+    const profileScreen = readProjectFile("app/(tabs)/profile.tsx");
 
     expect(packageJson.dependencies["@supabase/supabase-js"]).toBe("2.105.3");
+    expect(supabaseClient).toContain("storage: authStorage");
+    expect(supabaseClient).toContain("persistSession: true");
+    expect(supabaseClient).toContain("Platform.OS === 'web'");
+    expect(supabaseClient).toContain(": AsyncStorage");
+    expect(authContext).toContain("supabase.auth.startAutoRefresh()");
+    expect(authContext).toContain("supabase.auth.stopAutoRefresh()");
+    expect(profileScreen).not.toContain(
+      'setSession({ access_token: "", refresh_token: "" })',
+    );
   });
 
   it("does not expose backend setup instructions in user screens", () => {
@@ -312,11 +348,18 @@ describe("OtoRehber smoke checks", () => {
 
     expect(loginScreen).toContain("Şifremi unuttum");
     expect(loginScreen).toContain("resetPasswordForEmail");
-    expect(loginScreen).toContain("profile-routes/reset-password");
+    expect(loginScreen).toContain("\"reset-password\"");
+    expect(loginScreen).toContain("Gelen kutusu ve spam klasörünü kontrol edin");
+    expect(loginScreen).toContain("disabled={isSendingReset || Boolean(forgotInfo)}");
+    expect(loginScreen).toContain("mfaVerifyDisabled");
+    expect(loginScreen).toContain("Gönderildi");
     expect(resetScreen).toContain("Yeni Şifre Belirle");
     expect(resetScreen).toContain("exchangeCodeForSession");
     expect(resetScreen).toContain("setSession");
     expect(resetScreen).toContain("updateUser({ password })");
+    expect(readProjectFile("app/reset-password.tsx")).toContain(
+      "./profile-routes/reset-password",
+    );
     expect(layout).toContain('name="profile-routes/reset-password"');
   });
 
@@ -343,6 +386,65 @@ describe("OtoRehber smoke checks", () => {
     expect(comparisonDetail).toContain("seçtiğin katalog seviyesindeki teknik");
   });
 
+  it("dismisses the keyboard before opening vehicle pickers", () => {
+    const picker = readProjectFile("components/VehicleCatalogPicker.tsx");
+    const discover = readProjectFile("app/(tabs)/index.tsx");
+    const addReviewModal = readProjectFile("components/AddReviewModal.tsx");
+    const garage = readProjectFile("app/(tabs)/garage.tsx");
+    const createPost = readProjectFile("app/post/create.tsx");
+
+    expect(picker).toContain("if (visible) Keyboard.dismiss()");
+    [discover, addReviewModal, garage, createPost].forEach((source) => {
+      expect(source).toContain("Keyboard.dismiss()");
+    });
+  });
+
+  it("keeps garage add-car sheet keyboard-aware instead of pinned absolute bottom", () => {
+    const garage = readProjectFile("app/(tabs)/garage.tsx");
+    const addCarModal = garage.slice(
+      garage.indexOf("function AddCarModal"),
+      garage.indexOf("// ─── Yakıt Fişi Ekle Modal"),
+    );
+
+    expect(addCarModal).toContain('behavior={Platform.OS === "ios" ? "padding" : "height"}');
+    expect(addCarModal).toContain('pointerEvents="box-none"');
+    expect(addCarModal).toContain("scrollRef.current?.scrollToEnd({ animated: true })");
+    expect(garage).toContain('maxHeight: "92%"');
+    expect(addCarModal).not.toContain('{ height: "92%"');
+  });
+
+  it("keeps Android keyboard resize and high-risk input modals keyboard-aware", () => {
+    const appConfig = JSON.parse(readProjectFile("app.json"));
+    const addReviewModal = readProjectFile("components/AddReviewModal.tsx");
+    const garage = readProjectFile("app/(tabs)/garage.tsx");
+    const notifications = readProjectFile("app/profile-routes/notifications.tsx");
+    const security = readProjectFile("app/profile-routes/security.tsx");
+    const login = readProjectFile("app/profile-routes/login.tsx");
+    const createPost = readProjectFile("app/post/create.tsx");
+    const discover = readProjectFile("app/(tabs)/index.tsx");
+    const filterSheet = readProjectFile("components/FilterSheet.tsx");
+    const catalogPicker = readProjectFile("components/VehicleCatalogPicker.tsx");
+
+    expect(appConfig.expo.android.softwareKeyboardLayoutMode).toBe("resize");
+    expect(createPost).toContain(
+      'behavior={Platform.OS === "ios" ? "padding" : "height"}',
+    );
+    expect(addReviewModal).toContain("KeyboardAvoidingView");
+    expect(addReviewModal).toContain("pointerEvents=\"box-none\"");
+    expect(addReviewModal).toContain('maxHeight: "92%"');
+    expect(garage).toContain('{ maxHeight: "85%", backgroundColor: palette.background }');
+    expect(garage).toContain('{ maxHeight: "92%", backgroundColor: palette.background }');
+    expect(notifications).toContain("modalKeyboardAvoiding");
+    expect(notifications).toContain('justifyContent: "flex-end"');
+    expect(security.match(/modalKeyboardAvoiding/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(login.match(/modalKeyboardAvoiding/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(discover).toContain("comparePickerKeyboardAvoiding");
+    expect(filterSheet).toContain("KeyboardAvoidingView");
+    expect(filterSheet).toContain('maxHeight: "90%"');
+    expect(catalogPicker).toContain("KeyboardAvoidingView");
+    expect(catalogPicker).toContain('maxHeight: "84%"');
+  });
+
   it("keeps catalog and experience search optimized without Redis", () => {
     const searchSql = readProjectFile("supabase/catalog_search_optimization_schema.sql");
     const discover = readProjectFile("app/(tabs)/index.tsx");
@@ -359,5 +461,44 @@ describe("OtoRehber smoke checks", () => {
     expect(catalog).toContain("catalogModelsCache");
     expect(catalog).toContain("catalogEnginesCache");
     expect(catalog).toContain("catalogVariantsCache");
+  });
+
+  it("keeps public cache tables protected by RLS", () => {
+    const cacheRlsPatch = readProjectFile(
+      "supabase/daily_comparison_cache_rls_patch.sql",
+    );
+    const completeSchema = readProjectFile("supabase/complete_schema_migration.sql");
+
+    expect(cacheRlsPatch).toContain(
+      "alter table public.daily_comparison_cache enable row level security",
+    );
+    expect(cacheRlsPatch).toContain(
+      "revoke all on table public.daily_comparison_cache from anon",
+    );
+    expect(cacheRlsPatch).toContain(
+      "revoke all on table public.daily_comparison_cache from authenticated",
+    );
+    expect(cacheRlsPatch).toContain("notify pgrst, 'reload schema'");
+    expect(completeSchema).toContain(
+      "alter table public.daily_comparison_cache enable row level security",
+    );
+  });
+
+  it("opens trending vehicle detail with immediate brand/model route params", () => {
+    const discover = readProjectFile("app/(tabs)/index.tsx");
+    const trendingDetail = readProjectFile("app/trending/[model_id].tsx");
+
+    expect(discover).toContain("const buildTrendingRoute");
+    expect(discover).toContain("displayName:");
+    expect(discover).toContain("modelName:");
+    expect(discover).toContain("router.push(buildTrendingRoute(car)");
+    expect(discover).toContain("buildTrendingRoute({");
+    expect(trendingDetail).toContain("displayName?: string | string[]");
+    expect(trendingDetail).toContain("modelName?: string | string[]");
+    expect(trendingDetail).toContain("name: initialDisplayName");
+    expect(trendingDetail).toContain("if (isUuidModelId && (!brandName || !initialModelName))");
+    expect(trendingDetail).toContain("const uniqueReviews");
+    expect(trendingDetail).toContain("const uniquePosts");
+    expect(trendingDetail).toContain('reviewsQuery.eq("model_id", modelId)');
   });
 });

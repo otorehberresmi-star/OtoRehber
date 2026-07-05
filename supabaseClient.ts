@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 // Expo, EXPO_PUBLIC_ ile başlayan .env değişkenlerini otomatik olarak okur
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -19,7 +20,10 @@ const serverStorage = {
   removeItem: async () => undefined,
 };
 
-const authStorage = typeof window === 'undefined' ? serverStorage : AsyncStorage;
+const authStorage =
+  Platform.OS === 'web' && typeof window === 'undefined'
+    ? serverStorage
+    : AsyncStorage;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

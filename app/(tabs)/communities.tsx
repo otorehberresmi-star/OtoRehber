@@ -684,7 +684,7 @@ export default function CommunitiesScreen() {
                       Profilinde Göster
                     </Text>
                     <Text style={[styles.modalRowDesc, { color: palette.muted }]}>
-                      Bu topluluğu profilimde favori odam olarak göster.
+                      Bu topluluğu profilimde favori olarak göster.
                     </Text>
                   </View>
                   <Switch

@@ -41,6 +41,11 @@ const BLOCKED_TERMS = [
   "sürtük",
   "gerizekali",
   "gerizekalı",
+  "aptal",
+  "salak",
+  "haysiyetsiz",
+  "serefsiz",
+  "şerefsiz",
 ];
 
 const LEET_MAP: Record<string, string> = {
@@ -58,7 +63,11 @@ const LEET_MAP: Record<string, string> = {
 function normalizeText(value: string) {
   return value
     .toLocaleLowerCase("tr-TR")
+    .replace(/â/g, "a")
+    .replace(/î/g, "i")
+    .replace(/û/g, "u")
     .replace(/[0134@5$7!]/g, (char) => LEET_MAP[char] || char)
+    .replace(/\bq\b/g, "k")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/ı/g, "i")
@@ -72,6 +81,9 @@ function normalizeText(value: string) {
 function compactText(value: string) {
   return normalizeText(value).replace(/[^a-z0-9]/g, "");
 }
+
+export const CONTENT_MODERATION_MESSAGE =
+  "Bu içerik topluluk kurallarına uygun görünmüyor. Lütfen düzenleyip tekrar deneyin.";
 
 export function validateCleanContent(fields: ModerationField[]): ModerationResult {
   for (const field of fields) {
@@ -93,10 +105,22 @@ export function validateCleanContent(fields: ModerationField[]): ModerationResul
       return {
         ok: false,
         fieldLabel: field.label,
-        message: `${field.label} alanında küfür veya hakaret içeren ifadeler var. Lütfen bu ifadeleri kaldırıp tekrar dene.`,
+        message: `${field.label} alanında küfür veya hakaret içeren ifadeler var. ${CONTENT_MODERATION_MESSAGE}`,
       };
     }
   }
 
   return { ok: true };
+}
+
+export function isBlockedLanguageError(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : String(error || "");
+
+  return (
+    message.toLocaleLowerCase("tr-TR").includes("uygunsuz içerik") ||
+    message.toLocaleLowerCase("tr-TR").includes("topluluk kurallarına")
+  );
 }

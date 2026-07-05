@@ -21,7 +21,7 @@ import { supabase } from "../../supabaseClient";
 import { getCommunityById, getCommunityName } from "../../utils/communities";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../contexts/ThemeContext";
-import { loginRoute } from "../../utils/authRedirect";
+import { loginRoute, withSearchParams } from "../../utils/authRedirect";
 import PhotoCarousel from "../../components/PhotoCarousel";
 
 const getInitials = (name: string) => {
@@ -97,6 +97,19 @@ export default function CommunityFeedScreen() {
 
   const community = getCommunityById(communityId);
   const communityName = community?.name || getCommunityName(communityId);
+  const createPostReturnTo = withSearchParams("/post/create", { communityId });
+
+  const goToCreatePost = () => {
+    if (!isLoggedIn) {
+      router.push(loginRoute(createPostReturnTo) as any);
+      return;
+    }
+
+    router.push({
+      pathname: "/post/create",
+      params: { communityId },
+    } as any);
+  };
 
   const fetchPosts = useCallback(
     async (showLoader = true) => {
@@ -514,12 +527,7 @@ export default function CommunityFeedScreen() {
               </Text>
               <TouchableOpacity
                 style={styles.emptyBtn}
-                onPress={() =>
-                  router.push({
-                    pathname: "/post/create",
-                    params: { communityId },
-                  } as any)
-                }
+                onPress={goToCreatePost}
               >
                 <Text style={styles.emptyBtnText}>İlk Gönderiyi Paylaş</Text>
               </TouchableOpacity>
@@ -658,12 +666,7 @@ export default function CommunityFeedScreen() {
         accessibilityRole="button"
         accessibilityLabel="Toplulukta yeni gönderi paylaş"
         activeOpacity={0.9}
-        onPress={() =>
-          router.push({
-            pathname: "/post/create",
-            params: { communityId: communityId },
-          } as any)
-        }
+        onPress={goToCreatePost}
       >
         <FontAwesome6 name="plus" size={20} color={Colors.white} />
       </TouchableOpacity>

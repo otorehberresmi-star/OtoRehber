@@ -8,6 +8,7 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -671,6 +672,12 @@ export default function NotificationsScreen() {
           style={styles.modalOverlay}
           onPress={() => setReminderModal(false)}
         />
+        <KeyboardAvoidingView
+          style={styles.modalKeyboardAvoiding}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+          pointerEvents="box-none"
+        >
         <View
           style={[
             styles.modalSheet,
@@ -820,6 +827,7 @@ export default function NotificationsScreen() {
             <Text style={styles.modalPrimaryBtnText}>Kaydet</Text>
           </TouchableOpacity>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -939,12 +947,16 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   secondaryBtnText: { color: Colors.orange, fontSize: 14, fontWeight: "800" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)" },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.7)",
+  },
+  modalKeyboardAvoiding: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
   modalSheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
+    width: "100%",
     backgroundColor: Colors.navyMain,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

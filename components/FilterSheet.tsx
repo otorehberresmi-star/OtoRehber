@@ -3,7 +3,9 @@ import { FontAwesome6 } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -232,6 +234,12 @@ export default function FilterSheet({ visible, onClose, onApply }: Props) {
       onRequestClose={goBack}
     >
       <Pressable style={s.overlay} onPress={close} />
+      <KeyboardAvoidingView
+        style={s.keyboardAvoiding}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+        pointerEvents="box-none"
+      >
       <View
         style={[
           s.sheet,
@@ -383,18 +391,23 @@ export default function FilterSheet({ visible, onClose, onApply }: Props) {
           </TouchableOpacity>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  keyboardAvoiding: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
   sheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "90%",
+    width: "100%",
+    maxHeight: "90%",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,

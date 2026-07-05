@@ -25,7 +25,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Review, useReviews } from "../../contexts/ReviewContext";
 import { supabase } from "../../supabaseClient";
 import { useAppTheme } from "../../contexts/ThemeContext";
-import { validateCleanContent } from "../../utils/contentModeration";
+import {
+  CONTENT_MODERATION_MESSAGE,
+  isBlockedLanguageError,
+  validateCleanContent,
+} from "../../utils/contentModeration";
 import { loginRoute } from "../../utils/authRedirect";
 import { reportContent } from "../../utils/moderation";
 import PhotoCarousel from "../../components/PhotoCarousel";
@@ -427,6 +431,10 @@ export default function ReviewDetailScreen() {
       scrollToReplies();
       Keyboard.dismiss();
     } catch (error: any) {
+      if (isBlockedLanguageError(error)) {
+        Alert.alert("Uygunsuz içerik", CONTENT_MODERATION_MESSAGE);
+        return;
+      }
       Alert.alert("Hata", "Yorum kaydedilemedi: " + error.message);
     } finally {
       setIsSendingReply(false);
@@ -650,6 +658,10 @@ export default function ReviewDetailScreen() {
       await refreshReviews();
       setIsEditVisible(false);
     } catch (error: any) {
+      if (isBlockedLanguageError(error)) {
+        Alert.alert("Uygunsuz içerik", CONTENT_MODERATION_MESSAGE);
+        return;
+      }
       Alert.alert("Hata", "Yorum güncellenemedi: " + error.message);
     } finally {
       setIsSavingEdit(false);

@@ -1,9 +1,12 @@
 import Colors from "@/constants/Colors";
 import { FontAwesome6 } from "@expo/vector-icons";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -62,6 +65,10 @@ export default function VehicleCatalogPicker({
   const [model, setModel] = useState("");
   const [engine, setEngine] = useState("");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (visible) Keyboard.dismiss();
+  }, [visible]);
 
   const reset = () => {
     setStep("brand");
@@ -192,6 +199,12 @@ export default function VehicleCatalogPicker({
       onRequestClose={goBack}
     >
       <Pressable style={styles.overlay} onPress={close} />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoiding}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+        pointerEvents="box-none"
+      >
       <View
         style={[
           styles.sheet,
@@ -350,18 +363,23 @@ export default function VehicleCatalogPicker({
           </View>
         ) : null}
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  keyboardAvoiding: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
   sheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "84%",
+    width: "100%",
+    maxHeight: "84%",
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
     borderWidth: 1,

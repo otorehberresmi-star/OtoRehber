@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/react-native";
 import Constants from "expo-constants";
+import type { ComponentType } from "react";
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
 const isProduction = process.env.NODE_ENV === "production";
@@ -29,4 +30,6 @@ export function reportError(error: unknown, context?: Record<string, unknown>) {
   });
 }
 
-export const withErrorReporting = Sentry.wrap;
+export const withErrorReporting = <T extends ComponentType<any>>(
+  component: T,
+) => (initialized ? Sentry.wrap(component) : component);

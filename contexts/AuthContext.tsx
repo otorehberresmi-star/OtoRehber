@@ -11,12 +11,14 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { AppState } from "react-native";
 import { supabase } from "../supabaseClient";
+import { createAuthRedirectUrl } from "../utils/authRedirect";
 import {
   authenticateWithBiometrics,
   getBiometricAvailability,
   getBiometricPreference,
   saveBiometricPreference,
 } from "../utils/biometricSecurity";
+import { validateCleanContent } from "../utils/contentModeration";
 import { registerPushTokenForUser } from "../utils/pushNotifications";
 import { uploadPublicFile } from "../utils/storageUpload";
 
@@ -108,7 +110,8 @@ const extractAuthParams = (url: string) => {
   };
 };
 
-const redirectTo = () => Linking.createURL("auth/callback");
+const redirectTo = () =>
+  createAuthRedirectUrl(Linking.createURL, "auth/callback");
 
 const completeOAuthSession = async (url?: string | null) => {
   if (!url) return false;
@@ -256,6 +259,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
   const isAuthenticatingRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
+
+  useEffect(() => {
+    const syncAutoRefresh = (state: string) => {
+      if (state === "active") {
+        supabase.auth.startAutoRefresh();
+      } else {
+        supabase.auth.stopAutoRefresh();
+      }
+    };
+
+    syncAutoRefresh(AppState.currentState);
+    const subscription = AppState.addEventListener("change", syncAutoRefresh);
+
+    return () => {
+      subscription.remove();
+      supabase.auth.stopAutoRefresh();
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -490,6 +511,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
   ): Promise<boolean> => {
+    const moderation = validateCleanContent([
+      { label: "Ad Soyad", value: name },
+    ]);
+    if (!moderation.ok) return false;
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -503,11 +529,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return false;
 
     if (data.user?.id) {
-      await supabase.from("profiles").upsert({
+      const { error: profileError } = await supabase.from("profiles").upsert({
         id: data.user.id,
         display_name: name.trim(),
         full_name: name.trim(),
       });
+      if (profileError) return false;
     }
 
     setUser(await userFromSession(data.user));

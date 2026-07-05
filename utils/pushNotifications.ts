@@ -1,16 +1,44 @@
 import Constants from "expo-constants";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { secureApi } from "./secureApi";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+type ExpoNotifications = typeof import("expo-notifications");
+
+let notificationsModulePromise: Promise<ExpoNotifications | null> | null = null;
+let notificationHandlerConfigured = false;
+
+const isExpoGoAndroid = () =>
+  Platform.OS === "android" &&
+  Constants.executionEnvironment === "storeClient";
+
+const getNotificationsModule = async () => {
+  if (Platform.OS === "web" || isExpoGoAndroid()) return null;
+
+  notificationsModulePromise ??= import("expo-notifications")
+    .then((module) => {
+      if (!notificationHandlerConfigured) {
+        module.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+            shouldShowBanner: true,
+            shouldShowList: true,
+          }),
+        });
+        notificationHandlerConfigured = true;
+      }
+      return module;
+    })
+    .catch((error) => {
+      console.warn(
+        "Push bildirim modülü yüklenemedi:",
+        error?.message || error,
+      );
+      return null;
+    });
+
+  return notificationsModulePromise;
+};
 
 const getProjectId = () =>
   Constants.expoConfig?.extra?.eas?.projectId ||
@@ -26,6 +54,9 @@ type PushRegistrationUser = {
 
 export async function registerPushTokenForUser(user: PushRegistrationUser) {
   if (!user.id || Platform.OS === "web") return;
+
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return;
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;

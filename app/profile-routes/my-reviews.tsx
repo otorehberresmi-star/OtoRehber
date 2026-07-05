@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { useReviews } from "../../contexts/ReviewContext";
 import { useAppTheme } from "../../contexts/ThemeContext";
-import { AddReviewModal } from "../(tabs)/profile";
+import { AddReviewModal } from "../../components/AddReviewModal";
 import { supabase } from "../../supabaseClient";
 import { loginRoute } from "../../utils/authRedirect";
 

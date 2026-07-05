@@ -2,17 +2,26 @@
 // Keşfet Ekranı — Son Deneyimler "En Çok İncelenenler"in Hemen Üstünde
 
 import Colors from "@/constants/Colors";
+import { AddReviewModal } from "@/components/AddReviewModal";
 import { FontAwesome6 } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -34,7 +43,6 @@ import { supabase } from "../../supabaseClient";
 import { useAuth } from "../../contexts/AuthContext";
 import { useReviews } from "../../contexts/ReviewContext";
 import { useAppTheme } from "../../contexts/ThemeContext";
-import { AddReviewModal } from "./profile";
 import {
   normalizeCatalogText,
   VehicleCatalogSelection,
@@ -44,12 +52,31 @@ import { loginRoute } from "../../utils/authRedirect";
 type TrendingCar = {
   id: string;
   brand: string;
+  model: string;
   name: string;
   trim: string;
   rating: number;
   recommendPercent: number;
   featuredReview: string;
 };
+
+const buildTrendingRoute = (vehicle: {
+  id: string;
+  brand?: string;
+  model?: string;
+  name?: string;
+}) => ({
+  pathname: "/trending/[model_id]",
+  params: {
+    model_id: vehicle.id,
+    brand: vehicle.brand || "",
+    modelName: vehicle.model || "",
+    displayName:
+      vehicle.name ||
+      `${vehicle.brand || ""} ${vehicle.model || ""}`.trim() ||
+      "Araç",
+  },
+});
 
 type ModelSuggestion = {
   id: string;
@@ -298,7 +325,7 @@ function TrendingCarCard({ car }: { car: TrendingCar }) {
   const { palette } = useAppTheme();
   return (
     <Pressable
-      onPress={() => router.push(`/trending/${car.id}` as any)}
+      onPress={() => router.push(buildTrendingRoute(car) as any)}
       style={({ pressed }) => [
         styles.trendCard,
         { backgroundColor: palette.card, borderColor: palette.border },
@@ -635,6 +662,7 @@ export default function DiscoverScreen() {
         return {
           id: item.model_id,
           brand,
+          model: modelName,
           name: `${brand} ${modelName}`.trim(),
           trim: `${reviewCount} yorum • ${searchCount} arama`,
           rating: Number(item.average_rating || 0),
@@ -1304,6 +1332,7 @@ export default function DiscoverScreen() {
   };
 
   const openComparePicker = (slot: 0 | 1) => {
+    Keyboard.dismiss();
     setCatalogPickerSlot(slot);
   };
 
@@ -1753,7 +1782,14 @@ export default function DiscoverScreen() {
                         onPress={() => {
                           const queryText = `${model.brand} ${model.name}`.trim();
                           void recordSearchTrendEvent(queryText, model.id);
-                          router.push(`/trending/${model.id}` as any);
+                          router.push(
+                            buildTrendingRoute({
+                              id: model.id,
+                              brand: model.brand,
+                              model: model.name,
+                              name: queryText,
+                            }) as any,
+                          );
                         }}
                       >
                         <View style={styles.modelSuggestionIcon}>
@@ -2070,6 +2106,12 @@ export default function DiscoverScreen() {
         onRequestClose={closeComparePicker}
       >
         <Pressable style={styles.modalOverlay} onPress={closeComparePicker} />
+        <KeyboardAvoidingView
+          style={styles.comparePickerKeyboardAvoiding}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+          pointerEvents="box-none"
+        >
         <View
           style={[
             styles.comparePickerSheet,
@@ -2284,6 +2326,7 @@ export default function DiscoverScreen() {
             />
           )}
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Gönderi Oluştur Modalı */}
@@ -2658,14 +2701,15 @@ const styles = StyleSheet.create({
   },
 
   modalOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.5)",
   },
+  comparePickerKeyboardAvoiding: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
   comparePickerSheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
+    width: "100%",
     maxHeight: "82%",
     minHeight: "60%",
     borderTopLeftRadius: 24,

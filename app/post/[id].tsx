@@ -23,7 +23,11 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../supabaseClient";
 import { useAppTheme } from "../../contexts/ThemeContext";
-import { validateCleanContent } from "../../utils/contentModeration";
+import {
+  CONTENT_MODERATION_MESSAGE,
+  isBlockedLanguageError,
+  validateCleanContent,
+} from "../../utils/contentModeration";
 import { reportContent } from "../../utils/moderation";
 import { loginRoute } from "../../utils/authRedirect";
 import PhotoCarousel from "../../components/PhotoCarousel";
@@ -663,6 +667,10 @@ export default function PostDetailScreen() {
     } catch (error: any) {
       // 4. Detaylı Konsol Hata Takibi
       console.error("Yorum Detay Hatası:", error);
+      if (isBlockedLanguageError(error)) {
+        Alert.alert("Uygunsuz içerik", CONTENT_MODERATION_MESSAGE);
+        return;
+      }
       Alert.alert(
         "Hata",
         "Yorum gönderilirken bir sorun oluştu: " + error.message,
@@ -831,13 +839,15 @@ export default function PostDetailScreen() {
                   <Text style={[styles.postAuthor, { color: palette.text }]}>
                     {postAuthorName}
                   </Text>
-                  <Text style={[styles.postDot, { color: palette.muted }]}>
-                    {" "}
-                    •{" "}
-                  </Text>
-                  <Text style={styles.postCarBadge}>
-                    {post.car || "Bilinmiyor"}
-                  </Text>
+                  {post.car ? (
+                    <>
+                      <Text style={[styles.postDot, { color: palette.muted }]}>
+                        {" "}
+                        •{" "}
+                      </Text>
+                      <Text style={styles.postCarBadge}>{post.car}</Text>
+                    </>
+                  ) : null}
                 </View>
                 <Text style={[styles.postTime, { color: palette.muted }]}>
                   {post.created_at

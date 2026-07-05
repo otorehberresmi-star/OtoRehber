@@ -33,7 +33,11 @@ declare
     'kahpe',
     'pust',
     'surtuk',
-    'gerizekali'
+    'gerizekali',
+    'aptal',
+    'salak',
+    'haysiyetsiz',
+    'serefsiz'
   ];
 begin
   if input_text is null or btrim(input_text) = '' then
@@ -41,7 +45,7 @@ begin
   end if;
 
   clean := lower(input_text);
-  clean := translate(clean, 'çğıöşüÇĞİÖŞÜı', 'cgiosuCGIOSUi');
+  clean := translate(clean, 'çğıöşüÇĞİÖŞÜıâîûÂÎÛ', 'cgiosuCGIOSUiaiuAIU');
   clean := replace(clean, '0', 'o');
   clean := replace(clean, '1', 'i');
   clean := replace(clean, '!', 'i');
@@ -51,6 +55,7 @@ begin
   clean := replace(clean, '5', 's');
   clean := replace(clean, '$', 's');
   clean := replace(clean, '7', 't');
+  clean := regexp_replace(clean, '(^|[^a-z0-9])q([^a-z0-9]|$)', '\1k\2', 'g');
   clean := regexp_replace(clean, '[^a-z0-9]+', ' ', 'g');
   compact := regexp_replace(clean, '[^a-z0-9]+', '', 'g');
 
@@ -73,17 +78,26 @@ begin
   if TG_TABLE_NAME = 'posts' then
     if public.contains_blocked_language(new.title)
       or public.contains_blocked_language(new.content) then
-      raise exception 'Uygunsuz içerik: Küfür veya hakaret içeren metin paylaşılamaz.';
+      raise exception 'Uygunsuz içerik: Bu içerik topluluk kurallarına uygun görünmüyor. Lütfen düzenleyip tekrar deneyin.';
     end if;
   elsif TG_TABLE_NAME = 'reviews' then
     if public.contains_blocked_language(new.title)
       or public.contains_blocked_language(new.comment) then
-      raise exception 'Uygunsuz içerik: Küfür veya hakaret içeren metin paylaşılamaz.';
+      raise exception 'Uygunsuz içerik: Bu içerik topluluk kurallarına uygun görünmüyor. Lütfen düzenleyip tekrar deneyin.';
     end if;
   elsif TG_TABLE_NAME = 'comments' then
     if public.contains_blocked_language(new.content)
       or public.contains_blocked_language(new.text) then
-      raise exception 'Uygunsuz içerik: Küfür veya hakaret içeren metin paylaşılamaz.';
+      raise exception 'Uygunsuz içerik: Bu içerik topluluk kurallarına uygun görünmüyor. Lütfen düzenleyip tekrar deneyin.';
+    end if;
+  elsif TG_TABLE_NAME = 'profiles' then
+    if public.contains_blocked_language(new.display_name)
+      or public.contains_blocked_language(new.full_name) then
+      raise exception 'Uygunsuz içerik: Bu profil adı topluluk kurallarına uygun görünmüyor. Lütfen düzenleyip tekrar deneyin.';
+    end if;
+  elsif TG_TABLE_NAME = 'garage_cars' then
+    if public.contains_blocked_language(new.review) then
+      raise exception 'Uygunsuz içerik: Bu araç yorumu topluluk kurallarına uygun görünmüyor. Lütfen düzenleyip tekrar deneyin.';
     end if;
   end if;
 
@@ -104,4 +118,14 @@ for each row execute function public.reject_blocked_language();
 drop trigger if exists comments_reject_blocked_language on public.comments;
 create trigger comments_reject_blocked_language
 before insert or update of content, text on public.comments
+for each row execute function public.reject_blocked_language();
+
+drop trigger if exists profiles_reject_blocked_language on public.profiles;
+create trigger profiles_reject_blocked_language
+before insert or update of display_name, full_name on public.profiles
+for each row execute function public.reject_blocked_language();
+
+drop trigger if exists garage_cars_reject_blocked_language on public.garage_cars;
+create trigger garage_cars_reject_blocked_language
+before insert or update of review on public.garage_cars
 for each row execute function public.reject_blocked_language();

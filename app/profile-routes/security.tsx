@@ -5,7 +5,9 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -639,6 +641,12 @@ export default function SecurityScreen() {
         onRequestClose={handleMfaModalClose}
       >
         <Pressable style={styles.modalOverlay} onPress={handleMfaModalClose} />
+        <KeyboardAvoidingView
+          style={styles.modalKeyboardAvoiding}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+          pointerEvents="box-none"
+        >
         <View
           style={[
             styles.modalContent,
@@ -715,6 +723,7 @@ export default function SecurityScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* E-posta Değiştirme Modalı */}
@@ -728,6 +737,12 @@ export default function SecurityScreen() {
           style={styles.modalOverlay}
           onPress={() => setEmailModal(false)}
         />
+        <KeyboardAvoidingView
+          style={styles.modalKeyboardAvoiding}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+          pointerEvents="box-none"
+        >
         <View
           style={[
             styles.modalContent,
@@ -786,6 +801,7 @@ export default function SecurityScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Şifre Değiştirme Modalı */}
@@ -799,6 +815,12 @@ export default function SecurityScreen() {
           style={styles.modalOverlay}
           onPress={() => setPassModal(false)}
         />
+        <KeyboardAvoidingView
+          style={styles.modalKeyboardAvoiding}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+          pointerEvents="box-none"
+        >
         <View
           style={[
             styles.modalContent,
@@ -891,6 +913,7 @@ export default function SecurityScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Hesap Silme Modalı */}
@@ -906,6 +929,12 @@ export default function SecurityScreen() {
             if (!isDeletingAccount) setDeleteModal(false);
           }}
         />
+        <KeyboardAvoidingView
+          style={styles.modalKeyboardAvoiding}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+          pointerEvents="box-none"
+        >
         <View
           style={[
             styles.modalContent,
@@ -979,6 +1008,7 @@ export default function SecurityScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </SafeAreaView>
@@ -1073,6 +1103,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(0,0,0,0.7)",
+  },
+  modalKeyboardAvoiding: {
+    flex: 1,
+    justifyContent: "center",
   },
   modalContent: {
     backgroundColor: Colors.navyCard,

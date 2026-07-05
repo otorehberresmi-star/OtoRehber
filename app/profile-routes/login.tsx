@@ -20,8 +20,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../supabaseClient";
 import { useAppTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
-import { getSafeReturnTo } from "../../utils/authRedirect";
+import {
+  createAuthRedirectUrl,
+  getSafeReturnTo,
+} from "../../utils/authRedirect";
 import { getGoogleAuthAvailability } from "../../utils/authProviders";
+import { validateCleanContent } from "../../utils/contentModeration";
 import {
   LEGAL_DOCUMENT_VERSION,
   LegalDocumentId,
@@ -209,15 +213,18 @@ export default function LoginScreen() {
     setForgotInfo(null);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: Linking.createURL("profile-routes/reset-password"),
+        redirectTo: createAuthRedirectUrl(
+          Linking.createURL,
+          "reset-password",
+        ),
       });
       if (error) throw error;
 
       setForgotInfo(
-        "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi. Bağlantıyı açıp yeni şifrenizi belirleyebilirsiniz.",
+        "Eğer bu e-posta ile kayıtlı bir hesabınız varsa şifre sıfırlama bağlantısı gönderildi. Gelen kutusu ve spam klasörünü kontrol edin.",
       );
       setInfoMsg(
-        "Şifre sıfırlama bağlantısı gönderildi. E-postanızı kontrol edin.",
+        "Şifre sıfırlama bağlantısı gönderildiyse e-postanıza birkaç dakika içinde düşer.",
       );
     } catch (error: any) {
       setForgotError(
@@ -286,6 +293,18 @@ export default function LoginScreen() {
       return;
     }
 
+    if (isRegister) {
+      const moderation = validateCleanContent([
+        { label: "Ad Soyad", value: fullName },
+      ]);
+
+      if (!moderation.ok) {
+        setFieldErrors({ fullName: moderation.message });
+        setErrorMsg(moderation.message || "Ad Soyad alanını kontrol edin.");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       if (isRegister) {
@@ -314,11 +333,12 @@ export default function LoginScreen() {
         if (error) throw error;
 
         if (data.user?.id) {
-          await supabase.from("profiles").upsert({
+          const { error: profileError } = await supabase.from("profiles").upsert({
             id: data.user.id,
             display_name: fullName.trim(),
             full_name: fullName.trim(),
           });
+          if (profileError) throw profileError;
           await saveLegalConsents(data.user.id, legalAcceptedAt);
         }
 
@@ -898,6 +918,12 @@ export default function LoginScreen() {
         onRequestClose={cancelMfaLogin}
       >
         <Pressable style={styles.modalOverlay} onPress={cancelMfaLogin} />
+        <KeyboardAvoidingView
+          style={styles.modalKeyboardAvoiding}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+          pointerEvents="box-none"
+        >
         <View
           style={[
             styles.mfaModal,
@@ -954,6 +980,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
@@ -966,6 +993,12 @@ export default function LoginScreen() {
           style={styles.modalOverlay}
           onPress={() => setForgotModal(false)}
         />
+        <KeyboardAvoidingView
+          style={styles.modalKeyboardAvoiding}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+          pointerEvents="box-none"
+        >
         <View
           style={[
             styles.mfaModal,
@@ -997,7 +1030,12 @@ export default function LoginScreen() {
             placeholder="ornek@mail.com"
             placeholderTextColor={palette.muted}
             value={forgotEmail}
-            onChangeText={setForgotEmail}
+            editable={!isSendingReset}
+            onChangeText={(value) => {
+              setForgotEmail(value);
+              setForgotError(null);
+              setForgotInfo(null);
+            }}
           />
           {forgotError ? (
             <Text style={styles.mfaError}>{forgotError}</Text>
@@ -1016,18 +1054,25 @@ export default function LoginScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.mfaVerify}
+              style={[
+                styles.mfaVerify,
+                (isSendingReset || Boolean(forgotInfo)) &&
+                  styles.mfaVerifyDisabled,
+              ]}
               onPress={handleForgotPassword}
-              disabled={isSendingReset}
+              disabled={isSendingReset || Boolean(forgotInfo)}
             >
               {isSendingReset ? (
                 <ActivityIndicator color={Colors.white} />
               ) : (
-                <Text style={styles.mfaVerifyText}>Bağlantı Gönder</Text>
+                <Text style={styles.mfaVerifyText}>
+                  {forgotInfo ? "Gönderildi" : "Bağlantı Gönder"}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -1210,6 +1255,10 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.72)",
   },
+  modalKeyboardAvoiding: {
+    flex: 1,
+    justifyContent: "center",
+  },
   mfaModal: {
     marginHorizontal: 24,
     marginTop: "auto",
@@ -1284,6 +1333,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.orange,
     alignItems: "center",
     justifyContent: "center",
+  },
+  mfaVerifyDisabled: {
+    backgroundColor: "#94a3b8",
+    opacity: 0.85,
   },
   mfaVerifyText: { color: Colors.white, fontSize: 14, fontWeight: "800" },
 });

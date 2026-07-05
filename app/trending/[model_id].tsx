@@ -14,9 +14,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AddReviewModal } from "../../components/AddReviewModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { useReviews } from "../../contexts/ReviewContext";
-import { AddReviewModal } from "../(tabs)/profile";
 import { supabase } from "../../supabaseClient";
 import { useAppTheme } from "../../contexts/ThemeContext";
 import { loginRoute, withSearchParams } from "../../utils/authRedirect";
@@ -29,12 +29,16 @@ interface SupabaseReview {
   rating: number;
   created_at: string;
   user?: string;
+  avatar?: string;
+  brand?: string;
+  car?: string;
   recommend?: boolean;
 }
 
 interface SupabasePost {
   id: string;
   user_id?: string;
+  car?: string;
   title: string;
   content: string;
   created_at: string;
@@ -59,6 +63,9 @@ interface CarDetail {
 
 const buildSearchLabel = (value?: string) =>
   (value || "Araç").replace(/-/g, " ").trim();
+
+const firstParam = (value?: string | string[]) =>
+  Array.isArray(value) ? value[0] : value;
 
 const getInitials = (name: string) => {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -110,9 +117,70 @@ const deriveChronicIssues = (
   return matches.length > 0 ? matches : ["Henüz yeterli kronik sorun verisi yok"];
 };
 
+const normalizeContentKey = (value?: string | number | null) =>
+  String(value || "")
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .replace(/\s+/g, " ");
+
+const uniqueReviews = (items: SupabaseReview[]) => {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    const key = [
+      normalizeContentKey(item.user),
+      normalizeContentKey(item.brand),
+      normalizeContentKey(item.car),
+      normalizeContentKey(item.title),
+      normalizeContentKey(item.comment),
+      normalizeContentKey(item.rating),
+    ].join("|");
+
+    const safeKey = key.replace(/\|/g, "").trim() ? key : `id:${item.id}`;
+    if (seen.has(safeKey)) return false;
+    seen.add(safeKey);
+    return true;
+  });
+};
+
+const uniquePosts = (items: SupabasePost[]) => {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    const key = [
+      normalizeContentKey(item.user_id || item.user),
+      normalizeContentKey(item.car),
+      normalizeContentKey(item.title),
+      normalizeContentKey(item.content),
+    ].join("|");
+
+    const safeKey = key.replace(/\|/g, "").trim() ? key : `id:${item.id}`;
+    if (seen.has(safeKey)) return false;
+    seen.add(safeKey);
+    return true;
+  });
+};
+
+const withTimeout = async <T,>(
+  promise: PromiseLike<T>,
+  timeoutMs: number,
+  label: string,
+) =>
+  Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} zaman aşımına uğradı.`)), timeoutMs);
+    }),
+  ]);
+
 // ─── Ana Sayfa Bileşeni ───────────────────────────────────────────────────────
 export default function TrendingCarDetailScreen() {
-  const { model_id } = useLocalSearchParams<{ model_id: string }>();
+  const params = useLocalSearchParams<{
+    model_id: string;
+    brand?: string | string[];
+    modelName?: string | string[];
+    displayName?: string | string[];
+  }>();
   const router = useRouter();
   const { palette } = useAppTheme();
   const { user, isLoggedIn } = useAuth();
@@ -121,8 +189,17 @@ export default function TrendingCarDetailScreen() {
   const [reviews, setReviews] = useState<SupabaseReview[]>([]);
   const [posts, setPosts] = useState<SupabasePost[]>([]);
   const [loading, setLoading] = useState(true);
+  const modelId = firstParam(params.model_id);
+  const initialBrandName = firstParam(params.brand) || "";
+  const initialModelName = firstParam(params.modelName) || "";
+  const initialDisplayNameParam = firstParam(params.displayName) || "";
+  const initialDisplayName =
+    initialDisplayNameParam ||
+    `${initialBrandName} ${initialModelName}`.trim() ||
+    buildSearchLabel(modelId);
+
   const [car, setCar] = useState<CarDetail>({
-    name: "Araç",
+    name: initialDisplayName,
     trim: "Topluluk verileri",
     rating: 0,
     reviewsCount: 0,
@@ -133,7 +210,6 @@ export default function TrendingCarDetailScreen() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [isAddModalVisible, setAddModalVisible] = useState(false);
 
-  const modelId = Array.isArray(model_id) ? model_id[0] : model_id;
   const isUuidModelId =
     !!modelId &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -144,26 +220,37 @@ export default function TrendingCarDetailScreen() {
     async (showLoader = true) => {
       if (!modelId) return;
       if (showLoader) {
-      setLoading(true);
+        setLoading(true);
       }
       try {
-        let brandName = "";
-        let modelName = buildSearchLabel(modelId);
+        let brandName = initialBrandName;
+        let modelName =
+          initialModelName ||
+          (initialDisplayName !== buildSearchLabel(modelId)
+            ? initialDisplayName
+            : buildSearchLabel(modelId));
 
-        if (isUuidModelId) {
-          const { data: modelData, error: modelError } = await supabase
-            .from("models")
-            .select("id, name, brands(name)")
-            .eq("id", modelId)
-            .maybeSingle();
+        if (isUuidModelId && (!brandName || !initialModelName)) {
+          const { data: modelData, error: modelError } = await withTimeout(
+            supabase
+              .from("models")
+              .select("id, name, brands(name)")
+              .eq("id", modelId)
+              .maybeSingle(),
+            4500,
+            "Model bilgisi",
+          );
 
           if (!modelError && modelData) {
             modelName = modelData.name || modelName;
-            brandName = (modelData.brands as any)?.name || "";
+            brandName = (modelData.brands as any)?.name || brandName;
           }
         }
 
-        const fullCarName = `${brandName} ${modelName}`.trim() || modelName;
+        const fullCarName =
+          initialDisplayNameParam ||
+          `${brandName} ${modelName}`.trim() ||
+          modelName;
         const safeFullSearch = fullCarName.replace(/,/g, " ");
         const safeModelSearch = modelName.replace(/,/g, " ");
         const safeBrandSearch = brandName.replace(/,/g, " ");
@@ -183,19 +270,29 @@ export default function TrendingCarDetailScreen() {
           `content.ilike.%${safeModelSearch}%`,
         ].join(",");
 
-        const reviewsQuery = supabase
+        let reviewsQuery = supabase
           .from("reviews")
           .select(
             "id,user,avatar,brand,car,title,comment,rating,recommend,created_at",
           )
-          .or(reviewOrFilters)
-          .order("created_at", { ascending: false })
-          .limit(20);
+          .not("user_id", "is", null);
 
-        const { data: reviewsData, error: reviewsError } = await reviewsQuery;
+        reviewsQuery = isUuidModelId
+          ? reviewsQuery.eq("model_id", modelId)
+          : reviewsQuery.or(reviewOrFilters);
 
-        if (!reviewsError && reviewsData) {
-          setReviews(reviewsData);
+        const { data: reviewsData, error: reviewsError } = await withTimeout(
+          reviewsQuery.order("created_at", { ascending: false }).limit(20),
+          4500,
+          "Araç incelemeleri",
+        );
+
+        const dedupedReviews = uniqueReviews(
+          reviewsError ? [] : ((reviewsData || []) as SupabaseReview[]),
+        );
+
+        if (!reviewsError) {
+          setReviews(dedupedReviews);
         } else {
           setReviews([]);
         }
@@ -212,14 +309,20 @@ export default function TrendingCarDetailScreen() {
           postsQuery = postsQuery.or(postOrFilters);
         }
 
-        const { data: postsData, error: postsError } = await postsQuery
-          .order("created_at", { ascending: false })
-          .limit(5);
+        const { data: postsData, error: postsError } = await withTimeout(
+          postsQuery.order("created_at", { ascending: false }).limit(5),
+          4500,
+          "Topluluk gönderileri",
+        );
 
-        if (!postsError && postsData) {
+        const dedupedPosts = uniquePosts(
+          postsError ? [] : ((postsData || []) as SupabasePost[]),
+        );
+
+        if (!postsError && dedupedPosts.length > 0) {
           const userIds = Array.from(
             new Set(
-              (postsData as SupabasePost[])
+              dedupedPosts
                 .map((post) => post.user_id)
                 .filter(Boolean) as string[],
             ),
@@ -230,10 +333,14 @@ export default function TrendingCarDetailScreen() {
           > = {};
 
           if (userIds.length > 0) {
-            const { data: publicProfilesData } = await supabase
-              .from("public_profiles")
-              .select("id, full_name, display_name, avatar_url")
-              .in("id", userIds);
+            const { data: publicProfilesData } = await withTimeout(
+              supabase
+                .from("public_profiles")
+                .select("id, full_name, display_name, avatar_url")
+                .in("id", userIds),
+              4500,
+              "Profil bilgileri",
+            );
 
             profilesById = (publicProfilesData || []).reduce(
               (
@@ -251,7 +358,7 @@ export default function TrendingCarDetailScreen() {
           }
 
           setPosts(
-            (postsData as SupabasePost[]).map((post) => ({
+            dedupedPosts.map((post) => ({
               ...post,
               profiles: post.user_id ? profilesById[post.user_id] : undefined,
             })),
@@ -260,8 +367,8 @@ export default function TrendingCarDetailScreen() {
           setPosts([]);
         }
 
-        const visibleReviews = reviewsError ? [] : ((reviewsData || []) as SupabaseReview[]);
-        const visiblePosts = postsError ? [] : ((postsData || []) as SupabasePost[]);
+        const visibleReviews = dedupedReviews;
+        const visiblePosts = dedupedPosts;
         const ratedReviews = visibleReviews.filter((item) => Number(item.rating) > 0);
         const averageRating =
           ratedReviews.length > 0
@@ -293,11 +400,28 @@ export default function TrendingCarDetailScreen() {
         });
       } catch (e) {
         console.error("Veri çekilirken hata:", e);
+        setReviews([]);
+        setPosts([]);
+        setCar((current) => ({
+          ...current,
+          trim: "Topluluk verileri hazırlanıyor",
+          rating: 0,
+          reviewsCount: 0,
+          recommendPercent: 0,
+          chronicIssues: ["Bu araç için henüz yeterli topluluk verisi yok"],
+        }));
       } finally {
         setLoading(false);
       }
     },
-    [isUuidModelId, modelId],
+    [
+      initialBrandName,
+      initialDisplayName,
+      initialDisplayNameParam,
+      initialModelName,
+      isUuidModelId,
+      modelId,
+    ],
   );
 
   useEffect(() => {
@@ -618,11 +742,18 @@ export default function TrendingCarDetailScreen() {
               </View>
 
               {loading ? (
-                <ActivityIndicator
-                  size="large"
-                  color={Colors.orange}
-                  style={{ marginTop: 40 }}
-                />
+                <View
+                  style={[
+                    styles.emptyState,
+                    { backgroundColor: palette.card, borderColor: palette.border },
+                  ]}
+                >
+                  <ActivityIndicator color={Colors.orange} />
+                  <Text style={[styles.emptyStateText, { color: palette.softText }]}>
+                    Araç deneyimleri yükleniyor. Veri gelmezse boş durum
+                    gösterilecek.
+                  </Text>
+                </View>
               ) : (
                 <View style={styles.sectionBox}>
                   <Text style={[styles.sectionTitle, { color: palette.text }]}>

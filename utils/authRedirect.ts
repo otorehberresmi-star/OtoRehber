@@ -4,6 +4,18 @@ export const loginRoute = (returnTo: string) =>
     params: { returnTo },
   }) as const;
 
+export const AUTH_REDIRECT_SCHEME = "otorehber";
+
+type CreateUrl = (
+  path: string,
+  options?: { scheme?: string; isTripleSlashed?: boolean },
+) => string;
+
+export const createAuthRedirectUrl = (createURL: CreateUrl, path: string) =>
+  createURL(path.replace(/^\/+/, ""), {
+    scheme: AUTH_REDIRECT_SCHEME,
+  });
+
 export const withSearchParams = (
   pathname: string,
   params: Record<string, string | null | undefined>,

@@ -1990,6 +1990,11 @@ create table if not exists public.daily_comparison_cache (
 create index if not exists daily_comparison_cache_date_idx
 on public.daily_comparison_cache(date_key, slot);
 
+alter table public.daily_comparison_cache enable row level security;
+
+revoke all on table public.daily_comparison_cache from anon;
+revoke all on table public.daily_comparison_cache from authenticated;
+
 create or replace function public.refresh_daily_comparison_cache(
   p_date date default current_date
 )
